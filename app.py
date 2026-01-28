@@ -1,35 +1,37 @@
 import streamlit as st
 import yaml
-from backend.devin_task import submit_flag_removal
+import os
+from datetime import datetime
 
-st.set_page_config(page_title="Feature Flag Removal")
+TASK_DIR = "devin_tasks"
 
 st.title("🚩 Feature Flag Removal Dashboard")
 
 with open("feature_flags.yml") as f:
-    data = yaml.safe_load(f)
+    flags = yaml.safe_load(f)["flags"]
 
-flags = data["flags"]
-flag_names = list(flags.keys())
-
-selected_flag = st.selectbox(
+flag_name = st.selectbox(
     "Select feature flag to remove",
-    flag_names
+    list(flags.keys())
 )
 
-st.subheader("Flag Details")
-st.json(flags[selected_flag])
+st.json(flags[flag_name])
 
-st.warning(
-    "This action will:\n"
-    "- Remove the feature flag\n"
-    "- Remove all code usage\n"
-    "- Create a GitHub Pull Request\n\n"
-    "This cannot be undone."
-)
+confirm = st.checkbox("I understand this will create a PR")
 
-confirm = st.checkbox("I understand and want to continue")
+if confirm and st.button("Remove Feature Flag"):
+    task = {
+        "task_type": "remove_feature_flag",
+        "flag_name": flag_name,
+        "requested_by": "streamlit_ui",
+        "created_at": datetime.utcnow().isoformat(),
+        "status": "pending"
+    }
 
-if confirm and st.button("🚨 Remove Feature Flag"):
-    submit_flag_removal(selected_flag)
-    st.success("Devin task started. PR will be created.")
+    task_file = f"{TASK_DIR}/remove_{flag_name}.yaml"
+
+    with open(task_file, "w") as f:
+        yaml.safe_dump(task, f)
+
+    st.success("✅ Task created. Devin will pick this up.")
+    st.code(task_file)
