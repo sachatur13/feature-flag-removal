@@ -1,5 +1,6 @@
-task_type: test
+created_at: 2026-01-28 10:30:00+00:00
+failure_reason: Flag 'search_flag' not found in feature_flags.yml
 flag_name: search_flag
 requested_by: streamlit_ui
-created_at: 2026-01-28T10:30:00Z
-status: pending
+status: failed
+task_type: test
