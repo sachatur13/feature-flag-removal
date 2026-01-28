@@ -3,23 +3,39 @@ import yaml
 import os
 import subprocess
 import requests
+import time
 from datetime import datetime
 
-# --------------------------------------------------
+# ==================================================
 # CONFIG
-# --------------------------------------------------
-REPO_OWNER = "sachatur13"
-REPO_NAME = "feature-flag-removal"
+# ==================================================
+REPO_OWNER = "YOUR_GITHUB_ORG_OR_USERNAME"
+REPO_NAME = "feature-flag-removal-dashboard"
 DEFAULT_BRANCH = "main"
 TASK_DIR = "devin_tasks"
+POLL_INTERVAL_SECONDS = 5
 
-# --------------------------------------------------
+# ==================================================
+# SESSION STATE
+# ==================================================
+if "waiting_for_pr" not in st.session_state:
+    st.session_state.waiting_for_pr = False
+
+if "triggered_at" not in st.session_state:
+    st.session_state.triggered_at = None
+
+if "last_flag_triggered" not in st.session_state:
+    st.session_state.last_flag_triggered = None
+
+# ==================================================
 # UTILITIES
-# --------------------------------------------------
+# ==================================================
 def run(cmd):
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        st.error(f"Command failed:\n{' '.join(cmd)}\n\n{result.stderr}")
+        st.error(
+            f"Command failed:\n{' '.join(cmd)}\n\n{result.stderr}"
+        )
         raise RuntimeError(result.stderr)
     return result.stdout
 
@@ -27,11 +43,10 @@ def run(cmd):
 def setup_git():
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
-        st.stop("❌ GITHUB_TOKEN not found. Set it as an environment variable or Streamlit secret.")
+        st.stop("❌ GITHUB_TOKEN not found. Please configure it.")
 
     run(["git", "config", "--global", "user.email", "streamlit-bot@internal"])
     run(["git", "config", "--global", "user.name", "streamlit-bot"])
-
     run([
         "git", "remote", "set-url", "origin",
         f"https://{token}@github.com/{REPO_OWNER}/{REPO_NAME}.git"
@@ -76,32 +91,31 @@ def fetch_recent_prs(limit=10):
     }
 
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/pulls"
-    params = {
-        "state": "all",
-        "per_page": limit
-    }
+    params = {"state": "all", "per_page": limit}
 
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
     return response.json()
 
-# --------------------------------------------------
-# STREAMLIT UI
-# --------------------------------------------------
+# ==================================================
+# UI
+# ==================================================
 st.set_page_config(
     page_title="Feature Flag Removal",
     layout="centered"
 )
 
 st.title("🚩 Feature Flag Removal Dashboard")
-st.caption("Internal tool • All changes are reviewed via Pull Requests")
+st.caption(
+    "Internal tool • All changes are reviewed via GitHub Pull Requests"
+)
 
-# Setup git (once per session)
+# One-time git setup
 setup_git()
 
-# --------------------------------------------------
-# FEATURE FLAGS SECTION
-# --------------------------------------------------
+# ==================================================
+# FEATURE FLAGS
+# ==================================================
 flags = load_flags()
 flag_names = sorted(flags.keys())
 
@@ -136,16 +150,16 @@ with col2:
         st.markdown("**Description**")
         st.write(flag["description"])
 
+# ==================================================
+# TRIGGER REMOVAL
+# ==================================================
 st.divider()
 
-# --------------------------------------------------
-# REMOVAL ACTION
-# --------------------------------------------------
 st.warning(
     "This action does **not** delete code directly.\n\n"
     "It will:\n"
     "- Record a removal request in GitHub\n"
-    "- Trigger automated cleanup on a new branch\n"
+    "- Trigger automated cleanup by Devin\n"
     "- Create a Pull Request for human review"
 )
 
@@ -153,36 +167,46 @@ confirm = st.checkbox("I understand and want to proceed")
 
 if confirm:
     if st.button("🚨 Trigger Feature Flag Removal", type="primary"):
-        with st.spinner("Submitting removal request..."):
+        with st.spinner("Submitting removal request to GitHub..."):
             task_file = create_removal_task(selected_flag)
 
-        st.success("✅ Removal request submitted successfully")
+        st.session_state.waiting_for_pr = True
+        st.session_state.triggered_at = time.time()
+        st.session_state.last_flag_triggered = selected_flag
+
+        st.success("✅ Removal request submitted")
         st.markdown("**Request recorded as:**")
         st.code(task_file)
-        st.markdown(
-            "Devin will now process this request and open a Pull Request for review."
-        )
 
-# --------------------------------------------------
-# RECENT PRs SECTION
-# --------------------------------------------------
+        time.sleep(1)
+        st.experimental_rerun()
+
+# ==================================================
+# PR MONITORING (AUTO REFRESH)
+# ==================================================
 st.divider()
-st.subheader("📄 Recent Feature Flag Removal Pull Requests")
+st.subheader("📄 Feature Flag Removal Pull Requests")
 
 try:
     prs = fetch_recent_prs(limit=10)
+    pr_found = False
 
-    shown = False
     for pr in prs:
         title = pr["title"]
-        if "Remove feature flag" not in title:
-            continue  # keep this focused
 
-        shown = True
+        if "Remove feature flag" not in title:
+            continue
+
         status = pr["state"].capitalize()
         author = pr["user"]["login"]
         created = pr["created_at"][:10]
         url = pr["html_url"]
+
+        if (
+            st.session_state.last_flag_triggered
+            and f"Remove feature flag: {st.session_state.last_flag_triggered}" in title
+        ):
+            pr_found = True
 
         with st.container():
             st.markdown(f"**{title}**")
@@ -191,8 +215,19 @@ try:
             st.markdown(f"[View Pull Request →]({url})")
             st.divider()
 
-    if not shown:
-        st.info("No feature flag removal pull requests found yet.")
+    # ----------------------------------------------
+    # Background activity indicator
+    # ----------------------------------------------
+    if st.session_state.waiting_for_pr:
+        elapsed = int(time.time() - st.session_state.triggered_at)
 
-except Exception:
+        if pr_found:
+            st.session_state.waiting_for_pr = False
+            st.success("🎉 Pull request created by Devin")
+        else:
+            st.info(f"⏳ Devin is working… ({elapsed}s elapsed)")
+            time.sleep(POLL_INTERVAL_SECONDS)
+            st.experimental_rerun()
+
+except Exception as e:
     st.error("Unable to load pull requests from GitHub.")
