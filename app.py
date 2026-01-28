@@ -9,8 +9,8 @@ from datetime import datetime
 # ==================================================
 # CONFIG
 # ==================================================
-REPO_OWNER = "YOUR_GITHUB_ORG_OR_USERNAME"
-REPO_NAME = "feature-flag-removal-dashboard"
+REPO_OWNER = "sachatur13"
+REPO_NAME = "feature-flag-removal"
 DEFAULT_BRANCH = "main"
 TASK_DIR = "devin_tasks"
 POLL_INTERVAL_SECONDS = 5
