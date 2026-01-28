@@ -7,8 +7,8 @@ from datetime import datetime
 # -----------------------------
 # CONFIG
 # -----------------------------
-REPO_OWNER = "YOUR_GITHUB_ORG_OR_USERNAME"
-REPO_NAME = "feature-flag-removal-dashboard"
+REPO_OWNER = "sachatur13"
+REPO_NAME = "feature-flag-removal"
 DEFAULT_BRANCH = "main"
 TASK_DIR = "devin_tasks"
 
@@ -52,7 +52,7 @@ def create_task(flag_name):
         "status": "pending"
     }
 
-    task_file = f"{TASK_DIR}/remove_{flag_name}.yaml"
+    task_file = f"{TASK_DIR}/remove_{flag_name}.yml"
 
     with open(task_file, "w") as f:
         yaml.safe_dump(task, f)
