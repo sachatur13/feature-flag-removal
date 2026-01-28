@@ -37,7 +37,7 @@ def setup_git():
 
 
 def load_flags():
-    with open("feature_flags.yaml") as f:
+    with open("feature_flags.yml") as f:
         return yaml.safe_load(f)["flags"]
 
 
