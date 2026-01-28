@@ -39,7 +39,7 @@ def setup_git():
 
 
 def load_flags():
-    with open("feature_flags.yaml") as f:
+    with open("feature_flags.yml") as f:
         return yaml.safe_load(f)["flags"]
 
 
@@ -54,7 +54,7 @@ def create_devin_task(flag_name):
         "status": "pending"
     }
 
-    task_file = f"{TASK_DIR}/remove_{flag_name}.yaml"
+    task_file = f"{TASK_DIR}/remove_{flag_name}.yml"
 
     with open(task_file, "w") as f:
         yaml.safe_dump(task, f)
