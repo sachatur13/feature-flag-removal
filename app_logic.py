@@ -1,6 +1,6 @@
 import yaml
 
-with open("feature_flags.yaml") as f:
+with open("feature_flags.yml") as f:
     FLAGS = yaml.safe_load(f)["flags"]
 
 def search():
