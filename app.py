@@ -179,7 +179,7 @@ if confirm:
         st.code(task_file)
 
         time.sleep(1)
-        st.experimental_rerun()
+        st.rerun()
 
 # ==================================================
 # PR MONITORING (AUTO REFRESH)
@@ -227,7 +227,7 @@ try:
         else:
             st.info(f"⏳ Devin is working… ({elapsed}s elapsed)")
             time.sleep(POLL_INTERVAL_SECONDS)
-            st.experimental_rerun()
+            st.rerun()
 
 except Exception as e:
     st.error("Unable to load pull requests from GitHub.")
