@@ -1,10 +1,5 @@
 flags:
-  search_flag:
-    description: "New search experience"
-    owner: search-team
-    created_at: 2024-01-10
-
   checkout_refactor:
-    description: "Refactored checkout flow"
-    owner: payments-team
     created_at: 2023-11-02
+    description: Refactored checkout flow
+    owner: payments-team
