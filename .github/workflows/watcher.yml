@@ -7,16 +7,11 @@ on:
       - 'devin_tasks/**'
 
 jobs:
-  process-tasks:
+  trigger-devin:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,16 +19,77 @@ jobs:
           python-version: '3.11'
       
       - name: Install dependencies
-        run: |
-          pip install pyyaml
-          sudo apt-get update && sudo apt-get install -y ripgrep
+        run: pip install pyyaml
       
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-      - name: Run watcher
+      - name: Find pending tasks and trigger Devin
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python devin/watcher.py
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+        run: |
+          python << 'EOF'
+          import os
+          import yaml
+          import json
+          import urllib.request
+          import urllib.error
+
+          TASK_DIR = "devin_tasks"
+          DEVIN_API_KEY = os.environ.get("DEVIN_API_KEY")
+          REPO = "sachatur13/feature-flag-removal"
+
+          if not DEVIN_API_KEY:
+              print("ERROR: DEVIN_API_KEY secret not configured")
+              exit(1)
+
+          for filename in os.listdir(TASK_DIR):
+              if not (filename.endswith(".yml") or filename.endswith(".yaml")):
+                  continue
+              
+              task_path = os.path.join(TASK_DIR, filename)
+              with open(task_path) as f:
+                  task = yaml.safe_load(f)
+              
+              if task is None or task.get("status") != "pending":
+                  continue
+              
+              flag_name = task.get("flag_name")
+              if not flag_name:
+                  print(f"Skipping {filename}: no flag_name specified")
+                  continue
+              
+              print(f"Triggering Devin session for flag: {flag_name}")
+              
+              prompt = f"""Remove the feature flag '{flag_name}' from the {REPO} repository.
+
+          Steps:
+          1. Create a new branch named 'remove-flag-{flag_name}'
+          2. Remove the flag '{flag_name}' from feature_flags.yml
+          3. Search the codebase for all usages of '{flag_name}' and remove the conditional logic
+          4. Keep the default behavior when removing conditionals
+          5. Commit the changes and create a PR for review
+          6. Do NOT merge the PR automatically - it needs human review
+
+          Important: Make intelligent decisions about how to remove flag usages. Don't just delete code - refactor it properly."""
+
+              data = json.dumps({
+                  "prompt": prompt,
+                  "title": f"Remove feature flag: {flag_name}"
+              }).encode('utf-8')
+              
+              req = urllib.request.Request(
+                  "https://api.devin.ai/v1/sessions",
+                  data=data,
+                  headers={
+                      "Authorization": f"Bearer {DEVIN_API_KEY}",
+                      "Content-Type": "application/json"
+                  },
+                  method="POST"
+              )
+              
+              try:
+                  with urllib.request.urlopen(req) as response:
+                      result = json.loads(response.read().decode('utf-8'))
+                      print(f"Devin session created: {result.get('url')}")
+              except urllib.error.HTTPError as e:
+                  print(f"Failed to create Devin session: {e.code} - {e.read().decode('utf-8')}")
+                  exit(1)
+          EOF
