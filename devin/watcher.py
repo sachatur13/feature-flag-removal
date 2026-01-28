@@ -8,7 +8,7 @@ def process_task(task_path):
     with open(task_path) as f:
         task = yaml.safe_load(f)
 
-    if task["status"] != "pending":
+    if task is None or task.get("status") != "pending":
         return
 
     print(f"Processing task: {task_path}")
@@ -21,7 +21,7 @@ def process_task(task_path):
 
 def main():
     for file in os.listdir(TASK_DIR):
-        if file.endswith(".yaml"):
+        if file.endswith(".yaml") or file.endswith(".yml"):
             process_task(os.path.join(TASK_DIR, file))
 
 if __name__ == "__main__":

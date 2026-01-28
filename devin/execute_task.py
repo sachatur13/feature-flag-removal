@@ -15,12 +15,23 @@ def run(cmd):
     print(">", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
+def mark_task_failed(reason):
+    print(f"Task failed: {reason}")
+    task["status"] = "failed"
+    task["failure_reason"] = reason
+    Path(task_file).write_text(yaml.safe_dump(task))
+    sys.exit(1)
+
+# Check if flag exists in config before creating branch
+flags_file = Path("feature_flags.yml")
+data = yaml.safe_load(flags_file.read_text())
+if flag not in data.get("flags", {}):
+    mark_task_failed(f"Flag '{flag}' not found in feature_flags.yml")
+
 # 1. Create branch
 run(["git", "checkout", "-b", branch])
 
-# 2. Remove flag from feature_flags.yaml
-flags_file = Path("feature_flags.yaml")
-data = yaml.safe_load(flags_file.read_text())
+# 2. Remove flag from feature_flags.yml
 data["flags"].pop(flag)
 flags_file.write_text(yaml.safe_dump(data))
 
