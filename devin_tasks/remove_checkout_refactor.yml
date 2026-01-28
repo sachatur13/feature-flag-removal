@@ -1,0 +1,5 @@
+created_at: '2026-01-28T12:45:16.811505'
+flag_name: checkout_refactor
+requested_by: streamlit_ui
+status: pending
+task_type: remove_feature_flag
