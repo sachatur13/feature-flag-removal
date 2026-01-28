@@ -28,6 +28,15 @@ data = yaml.safe_load(flags_file.read_text())
 if flag not in data.get("flags", {}):
     mark_task_failed(f"Flag '{flag}' not found in feature_flags.yml")
 
+# Check if branch already exists (locally or remotely) - task may have been processed already
+result = subprocess.run(["git", "branch", "-a"], capture_output=True, text=True)
+if branch in result.stdout or f"remotes/origin/{branch}" in result.stdout:
+    print(f"Branch '{branch}' already exists. Task may have been processed already.")
+    task["status"] = "completed"
+    task["note"] = "Branch already existed - task was previously processed"
+    Path(task_file).write_text(yaml.safe_dump(task))
+    sys.exit(0)
+
 # 1. Create branch
 run(["git", "checkout", "-b", branch])
 
