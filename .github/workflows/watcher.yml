@@ -24,7 +24,9 @@ jobs:
           python-version: '3.11'
       
       - name: Install dependencies
-        run: pip install pyyaml
+        run: |
+          pip install pyyaml
+          sudo apt-get update && sudo apt-get install -y ripgrep
       
       - name: Configure git
         run: |
