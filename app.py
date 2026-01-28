@@ -7,13 +7,13 @@ from datetime import datetime
 # -----------------------------
 # CONFIG
 # -----------------------------
-REPO_OWNER = "sachatur13"
-REPO_NAME = "feature-flag-removal"
+REPO_OWNER = "YOUR_GITHUB_ORG_OR_USERNAME"
+REPO_NAME = "feature-flag-removal-dashboard"
 DEFAULT_BRANCH = "main"
 TASK_DIR = "devin_tasks"
 
 # -----------------------------
-# UTILITIES
+# UTILS
 # -----------------------------
 def run(cmd):
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -24,14 +24,12 @@ def run(cmd):
 
 
 def setup_git():
-    """Configure git identity and auth for Streamlit"""
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
-        st.stop("❌ GITHUB_TOKEN not set")
+        st.stop("❌ GitHub token not found. Set GITHUB_TOKEN.")
 
     run(["git", "config", "--global", "user.email", "streamlit-bot@internal"])
     run(["git", "config", "--global", "user.name", "streamlit-bot"])
-
     run([
         "git", "remote", "set-url", "origin",
         f"https://{token}@github.com/{REPO_OWNER}/{REPO_NAME}.git"
@@ -39,11 +37,11 @@ def setup_git():
 
 
 def load_flags():
-    with open("feature_flags.yml") as f:
+    with open("feature_flags.yaml") as f:
         return yaml.safe_load(f)["flags"]
 
 
-def create_devin_task(flag_name):
+def create_task(flag_name):
     os.makedirs(TASK_DIR, exist_ok=True)
 
     task = {
@@ -54,7 +52,7 @@ def create_devin_task(flag_name):
         "status": "pending"
     }
 
-    task_file = f"{TASK_DIR}/remove_{flag_name}.yml"
+    task_file = f"{TASK_DIR}/remove_{flag_name}.yaml"
 
     with open(task_file, "w") as f:
         yaml.safe_dump(task, f)
@@ -67,61 +65,83 @@ def create_devin_task(flag_name):
 
     return task_file
 
-
 # -----------------------------
-# STREAMLIT UI
+# UI
 # -----------------------------
-st.set_page_config(page_title="Feature Flag Removal", layout="centered")
+st.set_page_config(
+    page_title="Feature Flag Removal",
+    layout="centered"
+)
 
-st.title("🚩 Feature Flag Removal Dashboard")
-st.caption("Internal tool – all changes go through a Pull Request")
+st.title("🚩 Feature Flag Removal")
+st.caption("Internal tool • All changes go through Pull Requests")
 
-# One-time git setup
-try:
-    setup_git()
-except Exception:
-    st.stop()
+# Git setup
+setup_git()
 
 # Load flags
-try:
-    flags = load_flags()
-except FileNotFoundError:
-    st.stop("❌ feature_flags.yaml not found in repo")
-
-flag_names = list(flags.keys())
+flags = load_flags()
+flag_names = sorted(flags.keys())
 
 if not flag_names:
     st.info("No feature flags found.")
     st.stop()
 
+# Flag selection
 selected_flag = st.selectbox(
-    "Select a feature flag to remove",
+    "Select a feature flag",
     flag_names
 )
 
-st.subheader("Flag Details")
-st.json(flags[selected_flag])
+flag_data = flags[selected_flag]
 
+st.divider()
+
+# Flag details (clean, readable)
+st.subheader("📌 Feature Flag Details")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown(f"**Flag name**")
+    st.write(selected_flag)
+
+    st.markdown("**Owner**")
+    st.write(flag_data.get("owner", "Not specified"))
+
+with col2:
+    st.markdown("**Created on**")
+    st.write(flag_data.get("created_at", "Unknown"))
+
+    if "description" in flag_data:
+        st.markdown("**Description**")
+        st.write(flag_data["description"])
+
+st.divider()
+
+# Warning / explanation
 st.warning(
-    "⚠️ This action will:\n"
-    "- Create a removal request in the repo\n"
+    "This action does **not** delete code directly.\n\n"
+    "It will:\n"
+    "- Record a removal request in GitHub\n"
     "- Trigger automation to open a Pull Request\n"
-    "- Require human review before merge\n\n"
-    "**Nothing is deleted directly.**"
+    "- Require review and approval before merge"
 )
 
+# Confirmation
 confirm = st.checkbox("I understand and want to proceed")
 
 if confirm:
-    if st.button("🚨 Trigger Feature Flag Removal"):
-        try:
-            task_file = create_devin_task(selected_flag)
-            st.success("✅ Removal request created successfully!")
-            st.markdown("**Task file committed:**")
-            st.code(task_file)
-            st.markdown(
-                "Devin (or another automation) will now process this task "
-                "and create a Pull Request."
-            )
-        except Exception:
-            st.stop()
+    if st.button("🚨 Trigger Feature Flag Removal", type="primary"):
+        with st.spinner("Submitting removal request..."):
+            task_file = create_task(selected_flag)
+
+        st.success("✅ Removal request submitted successfully")
+
+        st.markdown("**Request recorded as:**")
+        st.code(task_file)
+
+        st.markdown(
+            "Devin will now process this request and create a pull request "
+            "for review."
+        )
