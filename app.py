@@ -229,5 +229,5 @@ try:
             time.sleep(POLL_INTERVAL_SECONDS)
             st.rerun()
 
-except Exception:
+except Exception as e:
     st.error("Unable to load pull requests from GitHub.")
