@@ -12,7 +12,7 @@ Safely remove the feature flag `{flag_name}`.
 STEPS:
 1. Create a new git branch named: remove-flag-{flag_name}
 
-2. Edit feature_flags.yaml:
+2. Edit feature_flags.yml:
    - Remove `{flag_name}` from the flags list
 
 3. Search the entire repository for `{flag_name}`
