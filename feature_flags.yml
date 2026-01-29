@@ -1,8 +1,4 @@
 flags:
-  async_order_processing:
-    created_at: 2022-12-14
-    description: Move order processing to asynchronous pipeline
-    owner: core-platform
   checkout_refactor:
     created_at: 2023-11-02
     description: Refactored checkout flow with improved payment retries
