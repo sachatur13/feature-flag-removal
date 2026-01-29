@@ -183,17 +183,21 @@ if confirm:
 
 # ==================================================
 # PR MONITORING (AUTO REFRESH)
-# ==================================================
 st.divider()
-st.subheader("📄 Feature Flag Removal Pull Requests")
+st.subheader("📄 Feature Flag Removal Pull Requests (Open)")
 
 try:
     prs = fetch_recent_prs(limit=10)
     pr_found = False
 
     for pr in prs:
+        # ✅ only open PRs
+        if pr["state"] != "open":
+            continue
+
         title = pr["title"]
 
+        # only feature flag PRs
         if "Remove feature flag" not in title:
             continue
 
