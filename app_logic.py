@@ -9,6 +9,4 @@ def search():
     return "Using old search"
 
 def checkout():
-    if "checkout_refactor" in FLAGS:
-        return "Using new checkout"
-    return "Using old checkout"
+    return "Using new checkout"
