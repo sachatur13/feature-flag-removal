@@ -7,10 +7,6 @@ flags:
     created_at: 2023-11-02
     description: Refactored checkout flow with improved payment retries
     owner: payments-team
-  enable_recommendations_ai:
-    created_at: 2024-03-18
-    description: AI-driven product recommendations on home page
-    owner: growth-engineering
   new_user_onboarding_flow:
     created_at: 2023-09-05
     description: Simplified onboarding flow for first-time users
